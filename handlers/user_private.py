@@ -35,6 +35,7 @@ class Form(StatesGroup):
     city = State()
     purpose = State()
     image = State()
+    image2 = State()
     contact = State()
 
     texts = {
@@ -108,7 +109,7 @@ async def add_age(message: types.Message, state: FSMContext):
         "Мужской",
         "Женский",
         "Отмена",
-        # "Предыдущий вопрос",
+         "Предыдущий вопрос",
         placeholder="Выберите пол",
         sizes=(2, 1)))
     await state.set_state(Form.gender)
@@ -124,7 +125,7 @@ async def add_gender(message: types.Message, state: FSMContext):
     await state.update_data(gender=message.text)
     await message.answer("3 вопрос: как тебя зовут?", reply_markup=get_keyboard(
         "Отмена",
-        # "Предыдущий вопрос",
+         "Предыдущий вопрос",
         placeholder="Введи имя",
         sizes=(1,)))
     await state.set_state(Form.name)
@@ -138,12 +139,12 @@ async def add_gender2(message: types.Message, state: FSMContext):
 @user_private_router.message(Form.name, F.text)
 async def add_name(message: types.Message, state: FSMContext):
     await state.update_data(name=message.text)
-    await message.answer("4 вопрос: из какого ты города?", eply_markup=get_keyboard(
+    await message.answer("4 вопрос: из какого ты города?", reply_markup=get_keyboard(
         "Отмена",
-        # "Предыдущий вопрос",
+         "Предыдущий вопрос",
         placeholder="Введи город",
         sizes=(1,)))
-    await state.set_state(Form.city) # на 4 вопросе не появляются кнопки, надо разобраться
+    await state.set_state(Form.city)  # на 4 вопросе не появляются кнопки, надо разобраться
 
 
 @user_private_router.message(Form.name)  # если кто-то решит фото отправить на вопрос об имени
@@ -164,7 +165,7 @@ async def add_city(message: types.Message, state: FSMContext):
             "поиск отношений",
             "просто общение",
             "Отмена",
-            # "Предыдущий вопрос",
+             "Предыдущий вопрос",
             placeholder="Выбери вариант ответа",
             sizes=(2, 1)))
         await state.set_state(Form.purpose)
@@ -172,11 +173,39 @@ async def add_city(message: types.Message, state: FSMContext):
 
 # noinspection PyTypeChecker
 @user_private_router.message(Form.purpose, F.text)
-async def add_purpose(message: types.Message, state: FSMContext):
+async def question(message: types.Message, state: FSMContext):
     await state.update_data(purpose=message.text)
+    await message.answer("Добавим фото?", reply_markup=get_keyboard(
+        "Да",
+        "Нет",
+        "Отмена",
+        "Предыдущий вопрос",
+        placeholder="Выбери вариант ответа",
+        sizes=(2, 1)))
+    if message.text == "Да":
+        await state.set_state(Form.image)
+        await message.answer("Добавьте фото")
+    else:
+        await state.set_state(Form.image2)
+
+
+@user_private_router.message(Form.image, F.photo, F.text.casefold() == "да")
+async def add_image(message: types.Message, state: FSMContext):
+    await state.update_data(image=message.photo[-1].file_id)
     await message.answer("Хорошо, можете оставить свои контакты для связи?", reply_markup=get_keyboard(
         "Отмена",
         # "Предыдущий вопрос",
+        placeholder="Оставь контакт для связи",
+        sizes=(1,)))
+    await state.set_state(Form.contact)
+
+
+@user_private_router.message(Form.image2, F.text, F.text.casefold() == "нет")
+async def add_image2(message: types.Message, state: FSMContext):
+    await state.update_data(image=message.text)
+    await message.answer("Хорошо, можете оставить свои контакты для связи?", reply_markup=get_keyboard(
+        "Отмена",
+         "Предыдущий вопрос",
         placeholder="Оставь контакт для связи",
         sizes=(1,)))
     await state.set_state(Form.contact)
@@ -194,8 +223,7 @@ async def add_contact(message: types.Message, state: FSMContext):
     await message.answer("Готово! Начнём искать собеседника?", reply_markup=get_keyboard(
         "Поиск собеседника",
         "Редактировать анкету",
-        "Отмена",
-        # "Предыдущий вопрос",
+         "Предыдущий вопрос",
         placeholder="Выберите действие",
         sizes=(2, 1)))
     data = await state.get_data()
@@ -207,6 +235,7 @@ async def add_contact(message: types.Message, state: FSMContext):
         f"Город: {data['city']}\n"
         f"Цель: {data['purpose']}\n"
         f"Контакт: {data['contact']}\n"
+        f"Фото: {data['image'] or data['image2']}\n"
     )
     await message.answer(profile_info)
     await state.clear()
